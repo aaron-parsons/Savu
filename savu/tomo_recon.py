@@ -91,7 +91,7 @@ def __option_parser():
                         default='localhost')
     # Port to connect to syslog server on
     parser.add_argument("-p", "--syslog_port", dest="syslog_port",
-                        help=hide, default=514)
+                        help=hide, default=514, type=int)
     parser.add_argument("--test_state", dest="test_state", default='False',
                         action='store_true', help=hide)
 
@@ -102,12 +102,9 @@ def __option_parser():
                         default=None)
     parser.add_argument("--dosna_connection", dest="dosna_connection",
                         help=hide, default=None)
-    parser.add_argument("--dosna_ceph_conffile", dest="dosna_ceph_conffile",
-                        help=hide, default=None)
-    parser.add_argument("--dosna_ceph_client_id", dest="dosna_ceph_client_id",
-                        help=hide, default=None)
-    parser.add_argument("--dosna_hdf5_dir", dest="dosna_hdf5_dir",
-                        help=hide, default=None)
+    parser.add_argument("--dosna_connection_options",
+                        dest="dosna_connection_options", help=hide,
+                        nargs='+', default=[])
 
     check_help = "Continue Savu processing from a checkpoint."
     choices = ['plugin', 'subplugin']
@@ -174,9 +171,7 @@ def _set_options(args):
     options["dosna_backend"] = args.dosna_backend
     options["dosna_engine"] = args.dosna_engine
     options["dosna_connection"] = args.dosna_connection
-    options["dosna_ceph_conffile"] = args.dosna_ceph_conffile
-    options["dosna_ceph_client_id"] = args.dosna_ceph_client_id
-    options["dosna_hdf5_dir"] = args.dosna_hdf5_dir
+    options["dosna_connection_options"] = args.dosna_connection_options
 
     options['checkpoint'] = args.checkpoint
 

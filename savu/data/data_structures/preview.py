@@ -22,8 +22,9 @@
 """
 import numpy as np
 
-import savu.data.data_structures.data_notes as notes
 from savu.core.utils import docstring_parameter
+from savu.plugins.utils import parse_config_string as parse_str
+import savu.data.data_structures.data_notes as notes
 
 
 class Preview(object):
@@ -33,6 +34,7 @@ class Preview(object):
     def __init__(self, data_obj):
         self._data_obj = data_obj
         self.revert_shape = None
+        self.revert_axis_labels = None
         self.plugin_preview = None
 
     def get_data_obj(self):
@@ -52,6 +54,9 @@ class Preview(object):
         self.revert_shape = kwargs.get('revert', self.revert_shape)
         load = kwargs.get('load', False)
         shape = self.get_data_obj().get_shape()
+        # for backward compatibility
+        preview_list = parse_str(preview_list) if \
+            isinstance(preview_list, str) else preview_list
         preview_list = self.__convert_nprocs(preview_list)
 
         if preview_list:

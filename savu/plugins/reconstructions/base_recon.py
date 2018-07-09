@@ -57,13 +57,11 @@ class BaseRecon(Plugin):
     :param force_zero: Set any values in the reconstructed image outside of \
     this range to zero. Default: [None, None].
     to zero. Default: False.
-    :param ratio: Ratio of the masks diameter in pixels to the smallest edge\
+    :param ratio: Ratio of the m2asks diameter in pixels to the smallest edge\
         size along given axis. Default: 0.95.
     :param log_func: Override the default log \
         function. Default: 'np.nan_to_num(-np.log(sino))'.
     """
-
-    count = 0
 
     def __init__(self, name='BaseRecon'):
         super(BaseRecon, self).__init__(name)
@@ -79,6 +77,8 @@ class BaseRecon(Plugin):
         self.base_pad_amount = None
         self.padding_alg = False
         self.cor_shift = 0
+        self.init_vol = False
+        self.cor_as_dataset = False
 
     def base_dynamic_data_info(self):
         if 'init_vol' in self.parameters.keys() and \
@@ -88,6 +88,10 @@ class BaseRecon(Plugin):
                 self.parameters['init_vol'] = name
             self.nIn += 1
             self.parameters['in_datasets'].append(self.parameters['init_vol'])
+        if isinstance(self.parameters['centre_of_rotation'], str):
+            self.parameters['in_datasets'].append(
+                    self.parameters['centre_of_rotation'])
+            self.nIn += 1
 
     def base_pre_process(self):
         in_data, out_data = self.get_datasets()
@@ -147,6 +151,9 @@ class BaseRecon(Plugin):
         return self.br_vol_shape
 
     def set_centre_of_rotation(self, inData, mData, pData):
+        # if cor has been passed as a dataset then do nothing
+        if isinstance(self.parameters['centre_of_rotation'], str):
+            return
         if 'centre_of_rotation' in mData.get_dictionary().keys():
             cor = mData.get('centre_of_rotation')
         else:
@@ -199,16 +206,19 @@ class BaseRecon(Plugin):
         Reconstruct a single sinogram with the provided centre of rotation
         """
         sl = self.get_current_slice_list()[0]
-        init = data[1] if len(data) is 2 else None
+        init = data[1] if self.init_vol else None
         angles = \
             self.angles[:, sl[self.scan_dim]] if self.scan_dim else self.angles
         self.frame_angles = angles
 
         dim_sl = sl[self.main_dir]
 
-        global_frames = self.get_global_frame_index()[0][self.count]
-
-        self.frame_cors = self.cor_func(self.cor[[global_frames]])
+        if self.cor_as_dataset:
+            self.frame_cors = self.cor_func(data[len(data)-1])
+        else:
+            frame_nos = \
+                self.get_plugin_in_datasets()[0].get_current_frame_idx()
+            self.frame_cors = self.cor_func(self.cor[[frame_nos]])
 
         # for extra padded frames that make up the numbers
         if not self.frame_cors.shape:
@@ -362,12 +372,23 @@ class BaseRecon(Plugin):
         in_pData, out_pData = self.get_plugin_datasets()
 
         in_pData[0].plugin_data_setup('SINOGRAM', self.get_max_frames())
-        if len(in_pData) is 2:
+
+        idx = 1
+        # initial volume dataset
+        if 'init_vol' in self.parameters.keys() and \
+                self.parameters['init_vol']:
+            self.init_vol = True
             from savu.data.data_structures.data_types import Replicate
             if self.rep_dim:
-                in_dataset[1].data = Replicate(
-                    in_dataset[1], in_dataset[0].get_shape(self.rep_dim))
+                in_dataset[idx].data = Replicate(
+                    in_dataset[idx], in_dataset[0].get_shape(self.rep_dim))
             in_pData[1].plugin_data_setup('VOLUME_XZ', self.get_max_frames())
+            idx += 1
+
+        # cor dataset
+        if isinstance(self.parameters['centre_of_rotation'], str):
+            self.cor_as_dataset = True
+            in_pData[idx].plugin_data_setup('METADATA', self.get_max_frames())
 
         axis_labels = in_dataset[0].data_info.get('axis_labels')[0]
 

@@ -52,6 +52,7 @@ class Plugin(PluginDatasets):
         self.docstring_info = {}
         self.slice_list = None
         self.global_index = None
+        self.pcount = 0
 
     def _main_setup(self, exp, params):
         """ Performs all the required plugin setup.
@@ -63,6 +64,7 @@ class Plugin(PluginDatasets):
         :param Experiment exp: The current Experiment object.
         :params dict params: Parameter values.
         """
+        self.__reset_process_frames_counter()
         self.exp = exp
         self._set_parameters(params)
         self._set_plugin_datasets()
@@ -72,6 +74,12 @@ class Plugin(PluginDatasets):
         in_data, out_data = self.get_datasets()
         for data in in_data + out_data:
             data._finalise_patterns()
+
+    def __reset_process_frames_counter(self):
+        self.pcount = 0
+
+    def get_process_frames_counter(self):
+        return self.pcount
 
     def _set_parameters_this_instance(self, indices):
         """ Determines the parameters for this instance of the plugin, in the
@@ -248,8 +256,10 @@ class Plugin(PluginDatasets):
         return data
 
     def plugin_process_frames(self, data):
-        return self.base_process_frames_after(self.process_frames(
+        frames = self.base_process_frames_after(self.process_frames(
                 self.base_process_frames_before(data)))
+        self.pcount += 1
+        return frames
 
     def process_frames(self, data):
         """
@@ -367,9 +377,9 @@ class Plugin(PluginDatasets):
         self.global_index = frame_idx
 
     def get_global_frame_index(self):
-        """ Get the position of the local processes frames from the global \
-        index of frames. """
+        """ Get the global frame index. """
         return self.global_index
+        
 
     def set_current_slice_list(self, sl):
         self.slice_list = sl

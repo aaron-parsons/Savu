@@ -122,13 +122,12 @@ class BaseTransport(object):
         :param plugin plugin: The current plugin instance.
         """
         pDict, result, nTrans = self._initialise(plugin)
-        cp = self.exp.checkpoint
-        cp._initialise(plugin.get_communicator())
+        cp, sProc, sTrans = self.__get_checkpoint_params(plugin)
 
         count = 0  # temporary solution
-        prange = range(cp.get_proc_idx(), pDict['nProc'])
+        prange = range(sProc, pDict['nProc'])
         kill = False
-        for count in range(cp.get_trans_idx(), nTrans):
+        for count in range(sTrans, nTrans):
             end = True if count == nTrans-1 else False
             self._log_completion_status(count, nTrans, plugin.name)
 
@@ -149,7 +148,7 @@ class BaseTransport(object):
     def _process_loop(self, plugin, prange, tdata, count, pDict, result, cp):
         kill_signal = False
         for i in prange:
-            if cp.is_time_to_checkpoint(self, count, i):
+            if cp and cp.is_time_to_checkpoint(self, count, i):
                 # kill signal sent so stop the processing
                 return result, True
             data = self._get_input_data(plugin, tdata, i, count)
@@ -160,6 +159,13 @@ class BaseTransport(object):
                 out_sl = pDict['out_sl']['process'][i][j]
                 result[j][out_sl] = res[j]
         return result, kill_signal
+
+    def __get_checkpoint_params(self, plugin):
+        cp = self.exp.checkpoint
+        if cp:
+            cp._initialise(plugin.get_communicator())
+            return cp, cp.get_proc_idx(), cp.get_trans_idx()
+        return None, 0, 0
 
     def _initialise(self, plugin):
         self.process_setup(plugin)
@@ -291,7 +297,8 @@ class BaseTransport(object):
         process_frames = np.array(process_frames)
         nframes = plugin.get_plugin_in_datasets()[0].get_total_frames()
         process_frames[process_frames >= nframes] = nframes - 1
-        plugin.set_global_frame_index(process_frames)
+        frames = process_frames[0] if process_frames.size else process_frames
+        plugin.set_global_frame_index(frames)
 
     def _set_functions(self, data_list, name):
         """ Create a dictionary of functions to remove (squeeze) or re-add

@@ -22,13 +22,16 @@
 """
 
 import os
+import re
 import sys
+import ast
 import logging
 import savu
 import copy
 import importlib
 import imp
 import inspect
+from itertools import izip_longest
 
 
 plugins = {}
@@ -260,3 +263,26 @@ def blockPrint():
 def enablePrint():
     """ Enable printing to stdout """
     sys.stdout = sys.__stdout__
+
+
+def parse_config_string(string):
+    regex = "[\[\]\, ]+"
+    split_vals = filter(None, re.split(regex, string))
+    delimitors = re.findall(regex, string)
+    split_vals = [repr(a.strip()) for a in split_vals]
+    zipped = izip_longest(delimitors, split_vals)
+    string = ''.join([i for l in zipped for i in l if i is not None])
+    try:
+        return ast.literal_eval(string)
+    except ValueError:
+        return ast.literal_eval(parse_array_index_as_string(string))
+
+
+def parse_array_index_as_string(string):
+    p = re.compile("'\['")
+    for m in p.finditer(string):
+        offset = m.start() - count + 3
+        end = string[offset:].index("']") + offset
+        string = string[:end] + "]'" + string[end+2:]
+    string = string.replace("'['", '[')
+    return string

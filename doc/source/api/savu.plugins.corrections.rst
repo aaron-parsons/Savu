@@ -1,5 +1,5 @@
-savu\.plugins\.corrections package
-==================================
+savu.plugins.corrections package
+================================
 
 .. automodule:: savu.plugins.corrections
     :members:
@@ -18,6 +18,7 @@ Submodules
    savu.plugins.corrections.distortion_correction
    savu.plugins.corrections.monitor_correction
    savu.plugins.corrections.monitor_correction_nd
+   savu.plugins.corrections.subpixel_shift
    savu.plugins.corrections.time_based_correction
    savu.plugins.corrections.time_based_plus_drift_correction
    savu.plugins.corrections.timeseries_field_corrections
