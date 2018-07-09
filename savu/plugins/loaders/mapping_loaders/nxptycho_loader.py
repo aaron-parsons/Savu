@@ -26,6 +26,7 @@ from savu.plugins.loaders.mapping_loaders.base_multi_modal_loader \
 import numpy as np
 from savu.plugins.utils import register_plugin
 import logging
+import h5py as h5
 
 
 @register_plugin
@@ -47,16 +48,20 @@ class NxptychoLoader(BaseMultiModalLoader):
         """
 
         data_str = '/instrument/detector/data'
-        data_obj, stxm_entry = self.multi_modal_setup('NXptycho', data_str,
-                                                      self.parameters['name'], patterns=False)
-        mono_energy = data_obj.backing_file[
-            stxm_entry.name + '/instrument/monochromator/energy']
+        stxm_entry = '/entry1/ptycho_entry'
+        data_obj = self.exp.create_data_object("in_data", 'ptycho')
+        data_obj.backing_file = h5.File(self.exp.meta_data.get("data_file"), 'r')
+        data_obj.data = data_obj.backing_file[stxm_entry + data_str]
+        data_obj.set_shape(data_obj.data.shape)
+        logging.debug("Creating file '%s' '%s'_entry",
+                      data_obj.backing_file.filename, 'NXptycho')
+        mono_energy = data_obj.backing_file['entry1/ptycho_entry/instrument/monochromator/energy']
         self.exp.meta_data.set("mono_energy", mono_energy)
 
         labels = []
         ### set the rotation
         rotation_angle = \
-            data_obj.backing_file[stxm_entry.name + '/data/theta'].value
+            data_obj.backing_file[stxm_entry + '/data/theta'].value
         if rotation_angle.ndim > 1:
             rotation_angle = rotation_angle[:, 0]
         # axis label
@@ -66,14 +71,14 @@ class NxptychoLoader(BaseMultiModalLoader):
         
         ### set the x
         x = \
-            data_obj.backing_file[stxm_entry.name + '/data/lab_sxy/lab_sx'].value*1e-6
+            data_obj.backing_file[stxm_entry + '/data/lab_sxy/lab_sx'].value*1e-6
         data_obj.meta_data.set('x', x)
         # axis label
         
         ### set the y
         y = \
-            data_obj.backing_file[stxm_entry.name + '/data/lab_sxy/lab_sy'].value*1e-6
-        pos = np.zeros((2,len(y)))
+            data_obj.backing_file[stxm_entry + '/data/lab_sxy/lab_sy'].value*1e-6
+        pos = np.zeros((2, len(y)))
         pos[0,:] = y
         pos[1,:] = x
         data_obj.meta_data.set('xy', pos)
